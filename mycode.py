@@ -53,11 +53,11 @@ X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_st
 # Initialize the CatBoost model with optimal settings
 cat_model = CatBoostRegressor(
     iterations=2500, # Max number of trees
-    learning_rate=0.016, # Slightly aggressive learning rate
+    learning_rate=0.02, # Slightly aggressive learning rate
     depth=5, # Tree depth
     loss_function='RMSE',
     random_seed=42,
-    l2_leaf_reg =2.0,
+    # Pass the list of categorical feature names directly to the model!
     cat_features=categorical_features_indices, 
     verbose=0, # Suppress training output
     early_stopping_rounds=150, # Stop if validation loss doesn't improve
@@ -93,6 +93,6 @@ test_predictions = cat_model.predict(X_test)
 
 # Create the submission file
 submission_df = pd.DataFrame({'Id': test_ids, 'HotelValue': test_predictions})
-submission_df.to_csv('submission_catboost_optimized.csv', index=False)
+submission_df.to_csv('submission_catboost.csv', index=False)
 
-print("Submission file 'submission_catboost_optimized.csv' created successfully.")
+print("Submission file 'submission_catboost.csv' created successfully.")
