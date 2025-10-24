@@ -40,6 +40,19 @@ for col in numerical_cols:
     if combined_df[col].isnull().any():
         combined_df[col] = combined_df[col].fillna(combined_df[col].median())
 
+# Fill missing numerical values according to their context
+numerical_cols = combined_df.select_dtypes(include=np.number).columns
+for col in numerical_cols:
+    if combined_df[col].isnull().any():
+        if col == 'ParkingConstructionYear':
+        # Impute missing parking construction year with the main construction year
+            combined_df[col] = combined_df[col].fillna(combined_df['ConstructionYear'])
+        elif col in ['SwimmingPoolArea', 'FacadeArea']:
+            # For these features, 0 is a meaningful value (absence of the feature)
+            combined_df[col] = combined_df[col].fillna(0)
+        else:
+            # For other numerical columns (like RoadAccessLength), fill with the median
+            combined_df[col] = combined_df[col].fillna(combined_df[col].median())
 
 # Separate back into training and testing sets
 X = combined_df.iloc[:len(train_df)]
@@ -50,18 +63,34 @@ X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_st
 
 # --- Model Training and Evaluation (CatBoost Regressor) ---
 
-# Initialize the CatBoost model with optimal settings
+# --- Initialize the CatBoost model with balanced defaults ---
 cat_model = CatBoostRegressor(
-    iterations=2500, # Max number of trees
-    learning_rate=0.02, # Slightly aggressive learning rate
-    depth=5, # Tree depth
-    loss_function='RMSE',
-    random_seed=42,
-    # Pass the list of categorical feature names directly to the model!
-    cat_features=categorical_features_indices, 
-    verbose=0, # Suppress training output
-    early_stopping_rounds=150, # Stop if validation loss doesn't improve
-    thread_count=-1 # Use all available cores
+    # Core parameters
+    iterations=10000,             # Number of boosting iterations (trees)
+    learning_rate=0.022767,           # Step size; smaller = slower but better generalization
+    border_count=597,             # Number of bins for numerical features (default 254–255)
+    depth=5,                      # Tree depth (controls model complexity)
+    loss_function='RMSE',         # Regression loss
+    random_seed=42,               # For reproducibility
+
+    # Regularization and randomness
+    l2_leaf_reg=3.0,              # L2 regularization coefficient on leaf values (default=3)
+    subsample=1,                # Fraction of samples per tree (row sampling)
+    rsm=1 ,                      # Fraction of features per tree (column sampling)
+    bagging_temperature=1,      # Controls the strength of randomization in bagging (0 = deterministic)
+    random_strength=1,          # Adds randomness when selecting tree splits
+    one_hot_max_size=2,          # One-hot encode features with ≤ this many categories
+
+    # Categorical handling
+    cat_features=categorical_features_indices,  # Column names of categorical features
+
+    # Computation
+    thread_count=-1,              # Use all CPU cores
+    verbose=0,                    # Suppress training output
+
+    # Early stopping (optional – enable when you want validation monitoring)
+    # early_stopping_rounds=1000, # Stop if validation metric doesn't improve for N rounds
+    # use_best_model=True,        # Keep best iteration when early stopping is used
 )
 
 # Train the CatBoost model
@@ -74,7 +103,7 @@ cat_model.fit(
 
 # Make predictions on the validation set
 val_predictions = cat_model.predict(X_val)
-val_mse = mean_squared_error(y_val, val_predictions)
+val_mse = np.sqrt(mean_squared_error(y_val, val_predictions))
 
 # Calculate scores
 train_r2 = cat_model.score(X_train, y_train)
@@ -96,3 +125,4 @@ submission_df = pd.DataFrame({'Id': test_ids, 'HotelValue': test_predictions})
 submission_df.to_csv('submission_catboost.csv', index=False)
 
 print("Submission file 'submission_catboost.csv' created successfully.")
+

@@ -1,102 +1,60 @@
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import RidgeCV
-from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import StandardScaler
-import numpy as np
+from sklearn.linear_model import LinearRegression # Switched to standard Linear Regression (Non-Regularized)
+from sklearn.metrics import r2_score, mean_squared_error
+import joblib
+import os
+# Import the run_preprocessing function from the preprocessing file
+from preprocessing import run_preprocessing, major_feature_engineering, create_preprocessor_pipeline
 
-# Load the datasets
-try:
-    train_df = pd.read_csv('train.csv')
-    test_df = pd.read_csv('test.csv')
-except FileNotFoundError:
-    print("Ensure train.csv and test.csv are in the same directory.")
-    exit()
+# --- 1. Load and Prepare Data ---
 
-# --- Preprocessing and Feature Engineering ---
+# Run the complete preprocessing pipeline to get the processed data arrays
+# We use target_log_transform=True, which is CRITICAL for linear models on skewed price data.
+X_full_train_proc, X_test_proc, y_full_train_log, test_ids, preprocessor = run_preprocessing(
+    train_file="train.csv", 
+    test_file="test.csv", 
+    target_log_transform=True
+)
 
-# Separate target variable
-y = train_df['HotelValue']
-train_ids = train_df['Id']
-test_ids = test_df['Id']
-train_df = train_df.drop(columns=['Id', 'HotelValue'])
-test_df = test_df.drop(columns=['Id'])
+# Create a Train-Validation Split for metric reporting (80/20 split on processed data)
+X_sub_train, X_val, y_sub_train_log, y_val_log = train_test_split(
+    X_full_train_proc, y_full_train_log, test_size=0.2, random_state=42
+)
 
-# Combine for consistent processing
-combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
+# --- 2. Define the Linear Model (Standard Linear Regression) ---
 
-# Handle Missing Values
-# Numerical columns: fill with the median
-for col in combined_df.select_dtypes(include=np.number).columns:
-    if combined_df[col].isnull().any():
-        combined_df[col] = combined_df[col].fillna(combined_df[col].median())
+# LinearRegression performs standard Ordinary Least Squares (OLS) without regularization.
+# It is highly susceptible to multicollinearity introduced by One-Hot Encoding.
+linear_model = LinearRegression(n_jobs=-1) 
 
-# Categorical columns: fill with the mode
-for col in combined_df.select_dtypes(include='object').columns:
-    if combined_df[col].isnull().any():
-        combined_df[col] = combined_df[col].fillna(combined_df[col].mode()[0])
+# --- 3. Train Model on Full Data and Report Metrics ---
 
-# One-Hot Encode Categorical Features
-combined_df = pd.get_dummies(combined_df, drop_first=True)
+print("\n--- Model Training & Evaluation (Standard Linear Regression) ---")
 
-# Separate back into training and testing sets
-X = combined_df.iloc[:len(train_df)]
-X_test = combined_df.iloc[len(train_df):]
+# Train the model on the sub-training split for evaluation
+linear_model.fit(X_sub_train, y_sub_train_log)
 
-# Align columns after one-hot encoding, before scaling
-train_cols = X.columns
-test_cols = X_test.columns
+# Calculate metrics (using log-transformed values)
+val_log_predictions = linear_model.predict(X_val)
+val_r2 = r2_score(y_val_log, val_log_predictions)
+val_mse = mean_squared_error(y_val_log, val_log_predictions)
 
-missing_in_test = set(train_cols) - set(test_cols)
-for c in missing_in_test:
-    X_test[c] = 0
+print(f"Validation R-squared (Log-transformed): {val_r2:.4f}")
+print(f"Validation Mean Squared Error (Log-transformed): {val_mse:.4f}")
 
-missing_in_train = set(test_cols) - set(train_cols)
-for c in missing_in_train:
-    X[c] = 0
+# --- 4. Create Final Production Model and Save ---
 
-X_test = X_test[train_cols]
+print("\nFitting final production model on ALL training data...")
 
-# --- Feature Scaling ---
+# Re-train the linear model on the FULL processed data
+linear_model.fit(X_full_train_proc, y_full_train_log)
 
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-X_test_scaled = scaler.transform(X_test)
+# Save the trained model object for the prediction script
+# Note: Renaming the output file to reflect the change
+joblib.dump(linear_model, 'fitted_linear_model.joblib')
 
+print("Final trained Linear Regression model saved to 'fitted_linear_model.joblib'.")
 
-# --- Model Training and Evaluation ---
-
-# Split the training data for validation
-X_train, X_val, y_train, y_val = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-
-# Initialize and train the RidgeCV Regression model
-alphas_to_try = [0.1, 1.0, 10.0, 100.0]
-model = RidgeCV(alphas=alphas_to_try)
-model.fit(X_train, y_train)
-
-# The best alpha found by RidgeCV
-print(f"Best alpha found: {model.alpha_}")
-
-# Make predictions on the validation set and calculate error
-val_predictions = model.predict(X_val)
-val_mse = mean_squared_error(y_val, val_predictions)
-val_r2 = model.score(X_val, y_val)
-
-# Calculate training scores
-train_r2 = model.score(X_train, y_train)
-
-print(f"Training R-squared: {train_r2}")
-print(f"Validation R-squared: {val_r2}")
-print(f"Validation Mean Squared Error: {val_mse}")
-
-
-# --- Prediction and Submission ---
-
-# Predict on the actual test data
-test_predictions = model.predict(X_test_scaled)
-
-# Create the submission file
-submission_df = pd.DataFrame({'Id': test_ids, 'HotelValue': test_predictions})
-submission_df.to_csv('submission_full_linear.csv', index=False)
-
-print("Submission file 'submission_full_linear.csv' created successfully.")
+# Note: The fitted_preprocessor.joblib was saved by run_preprocessing().
