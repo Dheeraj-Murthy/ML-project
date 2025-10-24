@@ -12,3 +12,5 @@ model_xgboost.py,XGBRegressor,5026.310376672836
 xgboost_model.py,XGBRegressor,29296.002380233367
 poly_model.py,PolynomialRegression,30305.016956749492
 poly_model.py,PolynomialRegression,30305.016956749492
+bayesian_model.py,BayesianRidge,20425.4901792677
+bayesian_model.py,BayesianRidge,20425.4901792677
