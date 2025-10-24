@@ -1,33 +1,45 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import AdaBoostRegressor # Switched to AdaBoost Regressor
-from sklearn.tree import DecisionTreeRegressor # Base estimator for AdaBoost
+from sklearn.ensemble import AdaBoostRegressor  # Switched to AdaBoost Regressor
+from sklearn.tree import DecisionTreeRegressor  # Base estimator for AdaBoost
 from sklearn.metrics import r2_score, mean_squared_error
 import joblib
 import os
 import sys
+import csv
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '../PreProcessing'))
+
+from preprocessing import *
 
 
-from preprocessing import major_feature_engineering, create_and_fit_preprocessor, remove_outliers 
 
-def run_model_training_and_prediction(train_file="train.csv", test_file="test.csv", target_log_transform=True):
+def run_model_training_and_prediction(
+        train_file="train.csv",
+        test_file="test.csv",
+        target_log_transform=True):
     """
-    Executes the full pipeline: data loading, preprocessing (using external joblib), 
+    Executes the full pipeline: data loading, preprocessing (using external joblib),
     AdaBoost training, evaluation, and submission file creation.
     """
     try:
         # --- 1. Load Data ---
-        # Assuming the train and test files are in the ../dataset/ folder relative to this script
-        DATA_PATH = os.path.join(os.path.dirname(__file__), '..', 'dataset') + os.sep
+        # Assuming the train and test files are in the ../dataset/ folder
+        # relative to this script
+        DATA_PATH = os.path.join(
+            os.path.dirname(__file__),
+            '..',
+            'dataset') + os.sep
         train_df = pd.read_csv(DATA_PATH + train_file)
         test_df = pd.read_csv(DATA_PATH + test_file)
     except FileNotFoundError:
-        print(f"ERROR: Could not find data files. Ensure they are in the '{DATA_PATH}' folder.")
+        print(
+            f"ERROR: Could not find data files. Ensure they are in the '{DATA_PATH}' folder.")
         return
 
     test_ids = test_df['Id']
-    
+
     # Separate features and target
     y_full = train_df['HotelValue']
     X_full = train_df.drop(columns=['Id', 'HotelValue'])
@@ -44,16 +56,22 @@ def run_model_training_and_prediction(train_file="train.csv", test_file="test.cs
     X_test_fe = X_test_fe[X_full_fe.columns]
 
     # Apply target transformation
-    y_full_train_log = np.log1p(y_full_clean) if target_log_transform else y_full_clean
+    y_full_train_log = np.log1p(
+        y_full_clean) if target_log_transform else y_full_clean
 
     # Load the fitted preprocessor
-    PREPROCESSOR_PATH = os.path.join(os.path.dirname(__file__), '..', 'PreProcessing', 'fitted_preprocessor.joblib')
+    PREPROCESSOR_PATH = os.path.join(
+        os.path.dirname(__file__),
+        '..',
+        'PreProcessing',
+        'fitted_preprocessor.joblib')
     try:
         # --- FIX: Load joblib from the sibling preprocessing folder ---
-        preprocessor = joblib.load(PREPROCESSOR_PATH) 
+        preprocessor = joblib.load(PREPROCESSOR_PATH)
         print(f"Successfully loaded preprocessor from {PREPROCESSOR_PATH}.")
     except FileNotFoundError:
-        print(f"ERROR: Could not find 'fitted_preprocessor.joblib' at {PREPROCESSOR_PATH}.")
+        print(
+            f"ERROR: Could not find 'fitted_preprocessor.joblib' at {PREPROCESSOR_PATH}.")
         print("Please ensure preprocessing.py was run successfully and saved the file.")
         return
 
@@ -72,10 +90,10 @@ def run_model_training_and_prediction(train_file="train.csv", test_file="test.cs
 
     ada_model = AdaBoostRegressor(
         estimator=base_estimator,
-        n_estimators=100, # Number of weak learners
-        learning_rate=0.1, # Weight applied to each estimator at each boosting iteration
+        n_estimators=100,  # Number of weak learners
+        learning_rate=0.1,  # Weight applied to each estimator at each boosting iteration
         random_state=42
-    ) 
+    )
 
     print("\n--- Model Training & Evaluation (AdaBoost Regressor) ---")
 
@@ -89,6 +107,21 @@ def run_model_training_and_prediction(train_file="train.csv", test_file="test.cs
 
     print(f"Validation R-squared (Log-transformed): {val_r2:.4f}")
     print(f"Validation Mean Squared Error (Log-transformed): {val_mse:.4f}")
+
+    # Calculate RMSE on original scale for a true representation of model performance
+    _, y_val_original = train_test_split(
+        y_full_clean, test_size=0.2, random_state=42
+    )
+    val_predictions_original = np.expm1(val_log_predictions)
+    rmse_original = np.sqrt(
+        mean_squared_error(
+            y_val_original,
+            val_predictions_original))
+    print(f"Validation RMSE (Original Scale): {rmse_original:.4f}")
+    save_model_results(
+        os.path.basename(__file__),
+        'AdaBoostRegressor',
+        rmse_original)
 
     # --- 6. Create Final Production Model and Save ---
 
@@ -112,10 +145,12 @@ def run_model_training_and_prediction(train_file="train.csv", test_file="test.cs
 
     # Create the submission file (saved in the Adaboost folder)
     submission_filename = 'submission_adaboost.csv'
-    submission_df = pd.DataFrame({'Id': test_ids, 'HotelValue': test_predictions})
+    submission_df = pd.DataFrame(
+        {'Id': test_ids, 'HotelValue': test_predictions})
     submission_df.to_csv(submission_filename, index=False)
 
-    print(f"\nSubmission file '{submission_filename}' created successfully in the adaboost folder.")
+    print(
+        f"\nSubmission file '{submission_filename}' created successfully in the adaboost folder.")
 
 
 if __name__ == '__main__':

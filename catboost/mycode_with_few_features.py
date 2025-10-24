@@ -5,24 +5,30 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 
 # --- Core Feature Engineering ---
+
+
 def engineer_features(df):
     # Total square footage
-    df['TotalSF'] = df['BasementTotalSF'] + df['GroundFloorArea'] + df['UpperFloorArea']
-    
+    df['TotalSF'] = df['BasementTotalSF'] + \
+        df['GroundFloorArea'] + df['UpperFloorArea']
+
     # Room & Bath
-    df['TotalBaths'] = df['FullBaths'] + 0.5 * df['HalfBaths'] + df['BasementFullBaths'] + 0.5 * df['BasementHalfBaths']
+    df['TotalBaths'] = df['FullBaths'] + 0.5 * df['HalfBaths'] + \
+        df['BasementFullBaths'] + 0.5 * df['BasementHalfBaths']
     df['AvgRoomSize'] = df['UsableArea'] / (df['TotalRooms'] + 1e-6)
-    
+
     # Amenities (simplified)
     df['HasPool'] = (df['SwimmingPoolArea'] > 0).astype(int)
     df['HasTerrace'] = (df['TerraceArea'] > 0).astype(int)
-    df['AmenitiesCount'] = df['HasPool'] + df['HasTerrace'] + (df['CentralAC'] == 'Y').astype(int)
-    
+    df['AmenitiesCount'] = df['HasPool'] + \
+        df['HasTerrace'] + (df['CentralAC'] == 'Y').astype(int)
+
     # Temporal
     df['PropertyAge'] = df['YearSold'] - df['ConstructionYear']
     df['YearsSinceRenovation'] = df['YearSold'] - df['RenovationYear']
-    
+
     return df
+
 
 # --- Load Data ---
 train_df = pd.read_csv('train.csv')
@@ -41,8 +47,10 @@ combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
 combined_df = engineer_features(combined_df)
 
 # --- Preprocessing ---
-categorical_features = combined_df.select_dtypes(include='object').columns.tolist()
-numerical_features = combined_df.select_dtypes(include=np.number).columns.tolist()
+categorical_features = combined_df.select_dtypes(
+    include='object').columns.tolist()
+numerical_features = combined_df.select_dtypes(
+    include=np.number).columns.tolist()
 
 for col in categorical_features:
     combined_df[col] = combined_df[col].fillna("MISSING")
@@ -54,7 +62,8 @@ X = combined_df.iloc[:len(train_df)]
 X_test = combined_df.iloc[len(train_df):]
 
 # Train/Validation Split
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(
+    X, y, test_size=0.2, random_state=42)
 
 # --- CatBoost Regressor ---
 cat_model = CatBoostRegressor(

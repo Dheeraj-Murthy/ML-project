@@ -1,0 +1,14 @@
+model_adaboost.py,AdaBoostRegressor,33193.78822692623
+model_catboost.py,CatBoostRegressor,26503.92669091654
+model_full_linear.py,LinearRegression,21327.46116655798
+model_random_forest.py,RandomForestRegressor,29172.589817143024
+model_regularized_least_square_Lasso.py,Lasso,21315.93733278469
+model_regularized_least_square_Ridge.py,Ridge,20071.41149400767
+model_regularized_least_squares_ElasticNet.py,ElasticNet,26671.325689033536
+model_gaussian.py,GaussianProcessRegressor,28094.360431685047
+model_lightgbm.py,LGBMRegressor,27240.30601492209
+model_xgboost.py,XGBRegressor,5026.310376672836
+model_xgboost.py,XGBRegressor,5026.310376672836
+xgboost_model.py,XGBRegressor,29296.002380233367
+poly_model.py,PolynomialRegression,30305.016956749492
+poly_model.py,PolynomialRegression,30305.016956749492

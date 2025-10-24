@@ -18,7 +18,8 @@ train_df = train_df.drop(columns=['Id', 'HotelValue'])
 test_df = test_df.drop(columns=['Id'])
 
 combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
-categorical_features_indices = combined_df.select_dtypes(include='object').columns.tolist()
+categorical_features_indices = combined_df.select_dtypes(
+    include='object').columns.tolist()
 
 for col in categorical_features_indices:
     combined_df[col] = combined_df[col].fillna("MISSING")
@@ -31,16 +32,21 @@ X = combined_df.iloc[:len(train_df)]
 X_test = combined_df.iloc[len(train_df):]
 
 # --- Train/Validation split ---
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(
+    X, y, test_size=0.2, random_state=42)
+
 
 def objective(trial):
     params = {
         'iterations': trial.suggest_int('iterations', 2000, 15000),
         'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
-        'depth': trial.suggest_int('depth', 4, 10),  # allow shallower and deeper trees
+        # allow shallower and deeper trees
+        'depth': trial.suggest_int('depth', 4, 10),
         'l2_leaf_reg': trial.suggest_float('l2_leaf_reg', 1, 10),
-        'subsample': trial.suggest_float('subsample', 0.6, 1.0),  # stochastic sampling
-        'rsm': trial.suggest_float('rsm', 0.6, 1.0),  # random subspace for features
+        # stochastic sampling
+        'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+        # random subspace for features
+        'rsm': trial.suggest_float('rsm', 0.6, 1.0),
         'bagging_temperature': trial.suggest_float('bagging_temperature', 0, 2),
         'random_strength': trial.suggest_float('random_strength', 0, 2),
         'border_count': trial.suggest_int('border_count', 32, 255),
@@ -61,8 +67,9 @@ def objective(trial):
     )
 
     preds = model.predict(X_val)
-    rmse = np.sqrt( mean_squared_error(y_val, preds) )  # proper RMSE
+    rmse = np.sqrt(mean_squared_error(y_val, preds))  # proper RMSE
     return rmse
+
 
 # --- Run Optuna study ---
 study = optuna.create_study(direction='minimize')

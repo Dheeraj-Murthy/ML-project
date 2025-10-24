@@ -6,16 +6,22 @@ from sklearn.metrics import r2_score
 import optuna
 
 # --- Core Feature Engineering ---
+
+
 def engineer_features(df):
-    df['TotalSF'] = df['BasementTotalSF'] + df['GroundFloorArea'] + df['UpperFloorArea']
-    df['TotalBaths'] = df['FullBaths'] + 0.5*df['HalfBaths'] + df['BasementFullBaths'] + 0.5*df['BasementHalfBaths']
+    df['TotalSF'] = df['BasementTotalSF'] + \
+        df['GroundFloorArea'] + df['UpperFloorArea']
+    df['TotalBaths'] = df['FullBaths'] + 0.5 * df['HalfBaths'] + \
+        df['BasementFullBaths'] + 0.5 * df['BasementHalfBaths']
     df['AvgRoomSize'] = df['UsableArea'] / (df['TotalRooms'] + 1e-6)
     df['HasPool'] = (df['SwimmingPoolArea'] > 0).astype(int)
     df['HasTerrace'] = (df['TerraceArea'] > 0).astype(int)
-    df['AmenitiesCount'] = df['HasPool'] + df['HasTerrace'] + (df['CentralAC'] == 'Y').astype(int)
+    df['AmenitiesCount'] = df['HasPool'] + \
+        df['HasTerrace'] + (df['CentralAC'] == 'Y').astype(int)
     df['PropertyAge'] = df['YearSold'] - df['ConstructionYear']
     df['YearsSinceRenovation'] = df['YearSold'] - df['RenovationYear']
     return df
+
 
 # --- Load Data ---
 train_df = pd.read_csv('train.csv')
@@ -25,14 +31,16 @@ y = train_df['HotelValue']
 train_ids = train_df['Id']
 test_ids = test_df['Id']
 
-train_df = train_df.drop(columns=['Id','HotelValue'])
+train_df = train_df.drop(columns=['Id', 'HotelValue'])
 test_df = test_df.drop(columns=['Id'])
 
 combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
 combined_df = engineer_features(combined_df)
 
-categorical_features = combined_df.select_dtypes(include='object').columns.tolist()
-numerical_features = combined_df.select_dtypes(include=np.number).columns.tolist()
+categorical_features = combined_df.select_dtypes(
+    include='object').columns.tolist()
+numerical_features = combined_df.select_dtypes(
+    include=np.number).columns.tolist()
 
 for col in categorical_features:
     combined_df[col] = combined_df[col].fillna("MISSING")
@@ -42,9 +50,12 @@ for col in numerical_features:
 X = combined_df.iloc[:len(train_df)]
 X_test = combined_df.iloc[len(train_df):]
 
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(
+    X, y, test_size=0.2, random_state=42)
 
 # --- Optuna Objective ---
+
+
 def objective(trial):
     params = {
         'iterations': trial.suggest_int('iterations', 1000, 4000),
@@ -58,21 +69,30 @@ def objective(trial):
         'loss_function': 'RMSE',
         'random_seed': 42
     }
-    
+
     model = CatBoostRegressor(**params, cat_features=categorical_features)
-    model.fit(X_train, y_train, eval_set=(X_val, y_val), early_stopping_rounds=150, verbose=False)
-    
+    model.fit(
+        X_train,
+        y_train,
+        eval_set=(
+            X_val,
+            y_val),
+        early_stopping_rounds=150,
+        verbose=False)
+
     preds = model.predict(X_val)
     return r2_score(y_val, preds)
+
 
 # --- Run Optuna Study ---
 print("--- Starting Hyperparameter Tuning (Reduced Features) ---")
 study = optuna.create_study(direction='maximize')
-study.optimize(objective, n_trials=30)  # you can increase n_trials for better tuning
+# you can increase n_trials for better tuning
+study.optimize(objective, n_trials=30)
 
 print("Best Validation R2:", study.best_value)
 print("Best Hyperparameters:")
-for k,v in study.best_params.items():
+for k, v in study.best_params.items():
     print(f"{k}: {v}")
 
 # --- Train Final Model with Best Params ---

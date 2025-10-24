@@ -5,26 +5,30 @@ from catboost import CatBoostRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 
+
 def engineer_features(df):
     """Creates a comprehensive set of new features."""
     # Area Features
-    df['TotalSF'] = df['BasementTotalSF'] + df['GroundFloorArea'] + df['UpperFloorArea']
+    df['TotalSF'] = df['BasementTotalSF'] + \
+        df['GroundFloorArea'] + df['UpperFloorArea']
 
     # Room and Bath Features
-    df['TotalBaths'] = df['FullBaths'] + 0.5 * df['HalfBaths'] + df['BasementFullBaths'] + 0.5 * df['BasementHalfBaths']
+    df['TotalBaths'] = df['FullBaths'] + 0.5 * df['HalfBaths'] + \
+        df['BasementFullBaths'] + 0.5 * df['BasementHalfBaths']
     # Handle division by zero for rooms
     df['AvgRoomSize'] = df['UsableArea'] / (df['TotalRooms'] + 1e-6)
     df['GuestRoomRatio'] = df['GuestRooms'] / (df['TotalRooms'] + 1e-6)
 
     # Amenities Count
     df['AmenitiesCount'] = (
-        (df['SwimmingPoolArea'] > 0).astype(int) + 
-        (df['BoundaryFence'] != 'None').astype(int) + 
-        (df['TerraceArea'] > 0).astype(int) + 
-        (df['ParkingArea'] > 0).astype(int) + 
+        (df['SwimmingPoolArea'] > 0).astype(int) +
+        (df['BoundaryFence'] != 'None').astype(int) +
+        (df['TerraceArea'] > 0).astype(int) +
+        (df['ParkingArea'] > 0).astype(int) +
         (df['CentralAC'] == 'Y').astype(int)
     )
     return df
+
 
 # Load the datasets
 train_df = pd.read_csv('train.csv')
@@ -35,15 +39,18 @@ y = train_df['HotelValue']
 test_ids = test_df['Id']
 
 # Combine for consistent processing
-combined_df = pd.concat([train_df.drop(columns=['Id', 'HotelValue']), test_df.drop(columns=['Id'])], axis=0, sort=False)
+combined_df = pd.concat([train_df.drop(
+    columns=['Id', 'HotelValue']), test_df.drop(columns=['Id'])], axis=0, sort=False)
 
 # --- Feature Engineering ---
 print("--- Engineering New Features ---")
 combined_df = engineer_features(combined_df)
 
 # --- Preprocessing ---
-categorical_features = combined_df.select_dtypes(include='object').columns.tolist()
-numerical_features = combined_df.select_dtypes(include=np.number).columns.tolist()
+categorical_features = combined_df.select_dtypes(
+    include='object').columns.tolist()
+numerical_features = combined_df.select_dtypes(
+    include=np.number).columns.tolist()
 
 for col in categorical_features:
     combined_df[col] = combined_df[col].fillna("MISSING")
@@ -57,7 +64,8 @@ X = combined_df.iloc[:len(train_df)]
 X_test = combined_df.iloc[len(train_df):]
 
 # --- Train/Validation Split ---
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(
+    X, y, test_size=0.2, random_state=42)
 
 # --- Model Training and Evaluation ---
 print("--- Training CatBoost with All New Features ---")

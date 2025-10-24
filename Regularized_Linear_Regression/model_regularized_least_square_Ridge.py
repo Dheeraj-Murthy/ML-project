@@ -1,24 +1,27 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import Ridge # Switched to Ridge Regression (L2 Regularization)
+# Switched to Ridge Regression (L2 Regularization)
+from sklearn.linear_model import Ridge
 from sklearn.metrics import r2_score, mean_squared_error
 import joblib
 import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '../PreProcessing'))
+from preprocessing import *
 # Import the run_preprocessing function from the preprocessing file
-from preprocessing import run_preprocessing, major_feature_engineering, create_preprocessor_pipeline
 
 # --- 1. Load and Prepare Data ---
 
 # Run the complete preprocessing pipeline to get the processed data arrays
-# We use target_log_transform=True, which is CRITICAL for linear models on skewed price data.
-X_full_train_proc, X_test_proc, y_full_train_log, test_ids, preprocessor = run_preprocessing(
-    train_file="train.csv", 
-    test_file="test.csv", 
-    target_log_transform=True
-)
+# We use target_log_transform=True, which is CRITICAL for linear models on
+# skewed price data.
+X_full_train_proc, X_test_proc, y_full_train_log, y_full_clean, test_ids, preprocessor = run_preprocessing(
+    train_file="train.csv", test_file="test.csv", target_log_transform=True)
 
-# Create a Train-Validation Split for metric reporting (80/20 split on processed data)
+# Create a Train-Validation Split for metric reporting (80/20 split on
+# processed data)
 X_sub_train, X_val, y_sub_train_log, y_val_log = train_test_split(
     X_full_train_proc, y_full_train_log, test_size=0.2, random_state=42
 )
@@ -26,8 +29,9 @@ X_sub_train, X_val, y_sub_train_log, y_val_log = train_test_split(
 # --- 2. Define the Linear Model (Ridge Optimization) ---
 
 # Ridge performs L2 regularization, which shrinks coefficients towards zero but rarely to exactly zero.
-# Alpha (10.0) is the regularization strength. This helps manage multicollinearity.
-ridge_model = Ridge(alpha=10.0, random_state=42) 
+# Alpha (10.0) is the regularization strength. This helps manage
+# multicollinearity.
+ridge_model = Ridge(alpha=10.0, random_state=42)
 
 # --- 3. Train Model on Full Data and Report Metrics ---
 
@@ -43,6 +47,19 @@ val_mse = mean_squared_error(y_val_log, val_log_predictions)
 
 print(f"Validation R-squared (Log-transformed): {val_r2:.4f}")
 print(f"Validation Mean Squared Error (Log-transformed): {val_mse:.4f}")
+val_rmse_log = np.sqrt(val_mse)
+
+# Calculate RMSE on original scale
+_, y_val_original = train_test_split(
+    y_full_clean, test_size=0.2, random_state=42
+)
+val_predictions_original = np.expm1(val_log_predictions)
+rmse_original = np.sqrt(
+    mean_squared_error(
+        y_val_original,
+        val_predictions_original))
+print(f"Validation RMSE (Original Scale): {rmse_original:.4f}")
+save_model_results(os.path.basename(__file__), 'Ridge', rmse_original)
 
 # --- 4. Create Final Production Model and Save ---
 

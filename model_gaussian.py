@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
+import os
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
 from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
+from PreProcessing.preprocessing import save_model_results
 
 # --- Load Data ---
 train_df = pd.read_csv("train.csv")
@@ -52,6 +54,7 @@ print("Optimized Kernel:", gpr.kernel_)
 y_pred, y_std = gpr.predict(X_val, return_std=True)
 rmse = np.sqrt(mean_squared_error(y_val, y_pred))
 print(f"Validation RMSE: {rmse:.4f}")
+save_model_results(os.path.basename(__file__), 'GaussianProcessRegressor', rmse)
 print(f"Mean uncertainty (σ): {np.mean(y_std):.4f}")
 
 # --- Plot ---

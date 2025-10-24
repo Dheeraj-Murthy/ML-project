@@ -17,7 +17,8 @@ train_df = train_df.drop(columns=['Id', 'HotelValue'])
 test_df = test_df.drop(columns=['Id'])
 
 combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
-categorical_features_indices = combined_df.select_dtypes(include='object').columns.tolist()
+categorical_features_indices = combined_df.select_dtypes(
+    include='object').columns.tolist()
 
 for col in categorical_features_indices:
     combined_df[col] = combined_df[col].fillna("MISSING")
@@ -41,7 +42,7 @@ cat_model = CatBoostRegressor(
     depth=5,
     loss_function='RMSE',
     random_seed=42,
-    
+
     # Regularization & randomness
     l2_leaf_reg=3.0,
     subsample=0.8,                 # slightly less than 1 for bagging
@@ -50,13 +51,13 @@ cat_model = CatBoostRegressor(
     random_strength=1.0,
     border_count=255,
     one_hot_max_size=2,
-    
+
     cat_features=categorical_features_indices,
-    
+
     # Computation
     thread_count=-1,
     verbose=100,                   # prints training progress every 100 iterations
-    
+
     # Early stopping to avoid overfitting
     early_stopping_rounds=500,
     use_best_model=True

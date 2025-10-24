@@ -4,6 +4,8 @@ from lightgbm import LGBMRegressor
 import lightgbm
 from sklearn.metrics import mean_squared_error
 import numpy as np
+import os
+from PreProcessing.preprocessing import save_model_results
 
 # Load the datasets
 try:
@@ -84,6 +86,8 @@ train_r2 = model.score(X_train, y_train)
 print(f"Training R-squared: {train_r2}")
 print(f"Validation R-squared: {val_r2}")
 print(f"Validation Mean Squared Error: {val_mse}")
+val_rmse = np.sqrt(val_mse)
+save_model_results(os.path.basename(__file__), 'LGBMRegressor', val_rmse)
 
 
 # --- Prediction and Submission ---
