@@ -3,6 +3,12 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
+import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '../PreProcessing'))
+
+from preprocessing import save_model_results
 
 # --- Load datasets ---
 train_df = pd.read_csv('train.csv')
@@ -21,7 +27,8 @@ combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
 # Encode categorical columns
 categorical_cols = combined_df.select_dtypes(include='object').columns.tolist()
 for col in categorical_cols:
-    combined_df[col] = combined_df[col].fillna("MISSING").astype('category').cat.codes
+    combined_df[col] = combined_df[col].fillna(
+        "MISSING").astype('category').cat.codes
 
 # Fill missing numerical values
 numerical_cols = combined_df.select_dtypes(include=np.number).columns
@@ -33,7 +40,8 @@ X = combined_df.iloc[:len(train_df)]
 X_test = combined_df.iloc[len(train_df):]
 
 # --- Train/Validation Split ---
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(
+    X, y, test_size=0.2, random_state=42)
 
 # --- Initialize XGBoost Regressor ---
 xgb_model = XGBRegressor(
@@ -79,6 +87,10 @@ print("\n--- XGBoost Regressor Results ---")
 print(f"Training R²: {train_r2:.4f}")
 print(f"Validation R²: {val_r2:.4f}")
 print(f"Validation RMSE: {np.sqrt(val_mse):.4f}")
+save_model_results(
+    os.path.basename(__file__),
+    'XGBRegressor',
+    np.sqrt(val_mse))
 
 # --- Predict test set and create submission ---
 test_preds = xgb_model.predict(X_test)

@@ -22,7 +22,8 @@ test_df = test_df.drop(columns=['Id'])
 
 combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
 
-categorical_features_indices = combined_df.select_dtypes(include='object').columns.tolist()
+categorical_features_indices = combined_df.select_dtypes(
+    include='object').columns.tolist()
 
 # Fill missing categorical values
 for col in categorical_features_indices:
@@ -37,20 +38,41 @@ X = combined_df.iloc[:len(train_df)]
 X_test = combined_df.iloc[len(train_df):]
 
 # --- Define Objective Function for Optuna ---
+
+
 def objective(trial):
     params = {
         "iterations": 10000,
-        "depth": trial.suggest_int("depth", 4, 10),
-        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.1, log=True),
-        "l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1, 10, log=True),
-        "bagging_temperature": trial.suggest_float("bagging_temperature", 0.0, 1.0),
-        "border_count": trial.suggest_int("border_count", 32, 255),
-        "random_strength": trial.suggest_float("random_strength", 0.1, 2.0),
+        "depth": trial.suggest_int(
+            "depth",
+            4,
+            10),
+        "learning_rate": trial.suggest_float(
+            "learning_rate",
+            0.01,
+            0.1,
+            log=True),
+        "l2_leaf_reg": trial.suggest_float(
+            "l2_leaf_reg",
+            1,
+            10,
+            log=True),
+        "bagging_temperature": trial.suggest_float(
+            "bagging_temperature",
+            0.0,
+            1.0),
+        "border_count": trial.suggest_int(
+            "border_count",
+            32,
+            255),
+        "random_strength": trial.suggest_float(
+            "random_strength",
+            0.1,
+            2.0),
         "loss_function": "RMSE",
         "cat_features": categorical_features_indices,
         "verbose": 0,
-        "random_seed": 42
-    }
+        "random_seed": 42}
 
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     rmse_scores = []
@@ -60,13 +82,21 @@ def objective(trial):
         y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
 
         model = CatBoostRegressor(**params)
-        model.fit(X_train, y_train, eval_set=(X_val, y_val), early_stopping_rounds=200, verbose=0)
+        model.fit(
+            X_train,
+            y_train,
+            eval_set=(
+                X_val,
+                y_val),
+            early_stopping_rounds=200,
+            verbose=0)
 
         preds = model.predict(X_val)
         rmse = np.sqrt(mean_squared_error(y_val, preds))
         rmse_scores.append(rmse)
 
     return np.mean(rmse_scores)
+
 
 # --- Run Optuna Study ---
 study = optuna.create_study(direction="minimize")

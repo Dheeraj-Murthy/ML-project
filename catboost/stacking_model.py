@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
 from sklearn.linear_model import LinearRegression
+from PreProcessing.preprocessing import save_model_results
 
 from catboost import CatBoostRegressor
 import xgboost as xgb
@@ -18,11 +19,14 @@ y = train_df['HotelValue']
 test_ids = test_df['Id']
 
 # Combine for consistent preprocessing
-combined_df = pd.concat([train_df.drop(columns=['Id', 'HotelValue']), test_df.drop(columns=['Id'])], axis=0, sort=False)
+combined_df = pd.concat([train_df.drop(
+    columns=['Id', 'HotelValue']), test_df.drop(columns=['Id'])], axis=0, sort=False)
 
 # --- Preprocessing ---
-categorical_features = combined_df.select_dtypes(include='object').columns.tolist()
-numerical_features = combined_df.select_dtypes(include=np.number).columns.tolist()
+categorical_features = combined_df.select_dtypes(
+    include='object').columns.tolist()
+numerical_features = combined_df.select_dtypes(
+    include=np.number).columns.tolist()
 
 for col in categorical_features:
     combined_df[col] = combined_df[col].fillna("MISSING")
@@ -34,10 +38,13 @@ for col in numerical_features:
 X_cat = combined_df.iloc[:len(train_df)]
 X_test_cat = combined_df.iloc[len(train_df):]
 
-X_xgb_lgb = pd.get_dummies(combined_df, columns=categorical_features, dummy_na=True)
+X_xgb_lgb = pd.get_dummies(
+    combined_df,
+    columns=categorical_features,
+    dummy_na=True)
 X = X_xgb_lgb.iloc[:len(train_df)]
 X_test = X_xgb_lgb.iloc[len(train_df):]
-X_test = X_test[X.columns] # Align columns
+X_test = X_test[X.columns]  # Align columns
 
 # --- Stacking Implementation ---
 print("--- Starting Stacking Ensemble ---")
@@ -92,13 +99,13 @@ lgb_params = {
 
 # --- Training Level 0 Models with K-Fold ---
 for fold, (train_index, val_index) in enumerate(kf.split(X, y)):
-    print(f"===== Fold {fold+1} =====")
-    
+    print(f"===== Fold {fold + 1} =====")
+
     # --- CatBoost ---
     print("Training CatBoost...")
     X_train_cat, X_val_cat = X_cat.iloc[train_index], X_cat.iloc[val_index]
     y_train, y_val = y.iloc[train_index], y.iloc[val_index]
-    
+
     cat_model = CatBoostRegressor(**cat_params)
     cat_model.fit(X_train_cat, y_train, eval_set=(X_val_cat, y_val))
     oof_cat[val_index] = cat_model.predict(X_val_cat)
@@ -144,6 +151,11 @@ meta_preds = meta_model.predict(X_meta)
 final_r2 = r2_score(y, meta_preds)
 print(f"\n--- Overall Stacking Results ---")
 print(f"Final Stacking R-squared: {final_r2}")
+final_rmse = np.sqrt(mean_squared_error(y, meta_preds))
+save_model_results(
+    os.path.basename(__file__),
+    'Stacking Ensemble (CatBoost, XGBoost, LightGBM + LinearRegression)',
+    final_rmse)
 
 # --- Final Prediction ---
 print("\n--- Generating Final Submission ---")

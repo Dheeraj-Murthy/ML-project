@@ -8,46 +8,58 @@ from sklearn.metrics import mean_squared_error, r2_score
 # --------------------------
 # Feature Engineering Function
 # --------------------------
+
+
 def engineer_features(df):
     """Comprehensive features including golden features for property value."""
-    
+
     # ----- Core Area & Room Features -----
-    df['TotalSF'] = df['BasementTotalSF'] + df['GroundFloorArea'] + df['UpperFloorArea']
-    df['LandToBuildingRatio'] = df['LandArea'] / (df['GroundFloorArea'] + df['UpperFloorArea'] + 1e-6)
+    df['TotalSF'] = df['BasementTotalSF'] + \
+        df['GroundFloorArea'] + df['UpperFloorArea']
+    df['LandToBuildingRatio'] = df['LandArea'] / \
+        (df['GroundFloorArea'] + df['UpperFloorArea'] + 1e-6)
     df['BasementToTotalSF'] = df['BasementTotalSF'] / (df['TotalSF'] + 1e-6)
     df['TotalSFPerRoom'] = df['TotalSF'] / (df['TotalRooms'] + 1e-6)
     df['AvgRoomSize'] = df['UsableArea'] / (df['TotalRooms'] + 1e-6)
-    df['LowQualityAreaRatio'] = df['LowQualityArea'] / (df['UsableArea'] + 1e-6)
-    
+    df['LowQualityAreaRatio'] = df['LowQualityArea'] / \
+        (df['UsableArea'] + 1e-6)
+
     # ----- Bathroom & Kitchen Features -----
-    df['TotalBaths'] = df['FullBaths'] + 0.5*df['HalfBaths'] + df['BasementFullBaths'] + 0.5*df['BasementHalfBaths']
+    df['TotalBaths'] = df['FullBaths'] + 0.5 * df['HalfBaths'] + \
+        df['BasementFullBaths'] + 0.5 * df['BasementHalfBaths']
     df['BathroomsPerRoom'] = df['TotalBaths'] / (df['TotalRooms'] + 1e-6)
     df['GuestRoomRatio'] = df['GuestRooms'] / (df['TotalRooms'] + 1e-6)
     df['TotalRoomsIncludingKitchens'] = df['TotalRooms'] + df['Kitchens']
-    df['TotalUsableAreaPerRoom'] = df['UsableArea'] / (df['TotalRoomsIncludingKitchens'] + 1e-6)
+    df['TotalUsableAreaPerRoom'] = df['UsableArea'] / \
+        (df['TotalRoomsIncludingKitchens'] + 1e-6)
     df['KitchensPerRoom'] = df['Kitchens'] / (df['TotalRooms'] + 1e-6)
     df['BathroomsPerKitchens'] = df['TotalBaths'] / (df['Kitchens'] + 1e-6)
-    
+
     # ----- Parking / Driveway Features -----
     df['ParkingPerRoom'] = df['ParkingCapacity'] / (df['TotalRooms'] + 1e-6)
-    df['ParkingAreaPerCar'] = df['ParkingArea'] / (df['ParkingCapacity'] + 1e-6)
-    
+    df['ParkingAreaPerCar'] = df['ParkingArea'] / \
+        (df['ParkingCapacity'] + 1e-6)
+
     # ----- Temporal Features -----
     df['PropertyAge'] = df['YearSold'] - df['ConstructionYear']
     df['YearsSinceRenovation'] = df['YearSold'] - df['RenovationYear']
-    df['PropertyAgeSinceRenovation'] = np.maximum(0, df['YearsSinceRenovation'])
+    df['PropertyAgeSinceRenovation'] = np.maximum(
+        0, df['YearsSinceRenovation'])
     df['AgePerRoom'] = df['PropertyAge'] / (df['TotalRooms'] + 1e-6)
-    df['RenovationRatio'] = df['YearsSinceRenovation'] / (df['PropertyAge'] + 1e-6)
-    df['SeasonSold'] = df['MonthSold'].apply(lambda x: (x-1)//3)
-    
+    df['RenovationRatio'] = df['YearsSinceRenovation'] / \
+        (df['PropertyAge'] + 1e-6)
+    df['SeasonSold'] = df['MonthSold'].apply(lambda x: (x - 1) // 3)
+
     # ----- Interaction Features -----
-    df['ExteriorRatio'] = df['FacadeArea'] / (df['GroundFloorArea'] + df['UpperFloorArea'] + 1e-6)
+    df['ExteriorRatio'] = df['FacadeArea'] / \
+        (df['GroundFloorArea'] + df['UpperFloorArea'] + 1e-6)
     df['RoadAccessPerLand'] = df['RoadAccessLength'] / (df['LandArea'] + 1e-6)
-    df['RoadAccessPerRoom'] = df['RoadAccessLength'] / (df['TotalRooms'] + 1e-6)
+    df['RoadAccessPerRoom'] = df['RoadAccessLength'] / \
+        (df['TotalRooms'] + 1e-6)
     df['FacadePerTotalSF'] = df['FacadeArea'] / (df['TotalSF'] + 1e-6)
     df['ParkingToFacade'] = df['ParkingArea'] / (df['FacadeArea'] + 1e-6)
     df['PoolToLandRatio'] = df['SwimmingPoolArea'] / (df['LandArea'] + 1e-6)
-    
+
     # ----- Binary / Presence Features -----
     df['HasBasement'] = (df['BasementTotalSF'] > 0).astype(int)
     df['HasPool'] = (df['SwimmingPoolArea'] > 0).astype(int)
@@ -55,18 +67,24 @@ def engineer_features(df):
     df['HasSecondBasementFacility'] = df['BasementFacilityType2'].notna().astype(int)
     df['HasEnclosedVeranda'] = (df['EnclosedVerandaArea'] > 0).astype(int)
     df['HasTerrace'] = (df['TerraceArea'] > 0).astype(int)
-    df['HasAnyFacility'] = ((df['HasPool'] | df['HasTerrace'] | df['HasBasement'] | df['HasExtraFacility']).astype(int))
-    
+    df['HasAnyFacility'] = ((df['HasPool'] | df['HasTerrace']
+                            | df['HasBasement'] | df['HasExtraFacility']).astype(int))
+
     # ----- Amenities Count Features -----
-    df['AmenitiesCount'] = df['HasPool'] + df['HasTerrace'] + (df['ParkingArea']>0).astype(int) + (df['CentralAC']=='Y').astype(int) + (df['BoundaryFence']!='None').astype(int)
-    df['LuxuryFeaturesCount'] = df['AmenitiesCount'] + df['GuestRooms'] + df['Lounges']
-    
+    df['AmenitiesCount'] = df['HasPool'] + df['HasTerrace'] + (df['ParkingArea'] > 0).astype(
+        int) + (df['CentralAC'] == 'Y').astype(int) + (df['BoundaryFence'] != 'None').astype(int)
+    df['LuxuryFeaturesCount'] = df['AmenitiesCount'] + \
+        df['GuestRooms'] + df['Lounges']
+
     # ----- Combined / Golden Features -----
-    df['TotalFacilities'] = df['BasementTotalSF'] + df['GuestRooms'] + df['Lounges'] + df['Kitchens']
+    df['TotalFacilities'] = df['BasementTotalSF'] + \
+        df['GuestRooms'] + df['Lounges'] + df['Kitchens']
     df['AreaPerFacility'] = df['UsableArea'] / (df['TotalFacilities'] + 1e-6)
-    df['BasementFacilitiesArea'] = df['BasementFacilitySF1'] + df['BasementFacilitySF2']
-    
+    df['BasementFacilitiesArea'] = df['BasementFacilitySF1'] + \
+        df['BasementFacilitySF2']
+
     return df
+
 
 # --------------------------
 # Load Data
@@ -91,8 +109,10 @@ combined_df = engineer_features(combined_df)
 # --------------------------
 # Preprocessing
 # --------------------------
-categorical_features = combined_df.select_dtypes(include='object').columns.tolist()
-numerical_features = combined_df.select_dtypes(include=np.number).columns.tolist()
+categorical_features = combined_df.select_dtypes(
+    include='object').columns.tolist()
+numerical_features = combined_df.select_dtypes(
+    include=np.number).columns.tolist()
 
 for col in categorical_features:
     combined_df[col] = combined_df[col].fillna("MISSING")
@@ -104,11 +124,14 @@ X = combined_df.iloc[:len(train_df)]
 X_test = combined_df.iloc[len(train_df):]
 
 # Train/Validation Split
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(
+    X, y, test_size=0.2, random_state=42)
 
 # --------------------------
 # Optuna Hyperparameter Tuning
 # --------------------------
+
+
 def objective(trial):
     params = {
         'iterations': trial.suggest_int('iterations', 1000, 4000),
@@ -123,9 +146,17 @@ def objective(trial):
         'random_seed': 42
     }
     model = CatBoostRegressor(**params, cat_features=categorical_features)
-    model.fit(X_train, y_train, eval_set=[(X_val, y_val)], early_stopping_rounds=150, verbose=False)
+    model.fit(
+        X_train,
+        y_train,
+        eval_set=[
+            (X_val,
+             y_val)],
+        early_stopping_rounds=150,
+        verbose=False)
     preds = model.predict(X_val)
     return r2_score(y_val, preds)
+
 
 print("--- Starting Optuna Hyperparameter Tuning ---")
 study = optuna.create_study(direction='maximize')
@@ -168,5 +199,7 @@ print(f"Validation RMSE: {val_rmse}")
 # --------------------------
 test_predictions = final_model.predict(X_test)
 submission_df = pd.DataFrame({'Id': test_ids, 'HotelValue': test_predictions})
-submission_df.to_csv('submission_feature_engineered_catboost_full.csv', index=False)
+submission_df.to_csv(
+    'submission_feature_engineered_catboost_full.csv',
+    index=False)
 print("\nSubmission CSV 'submission_feature_engineered_catboost_full.csv' created successfully!")

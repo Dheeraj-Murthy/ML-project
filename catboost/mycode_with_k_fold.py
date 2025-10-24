@@ -20,7 +20,8 @@ test_df = test_df.drop(columns=['Id'])
 combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
 
 # Identify categorical columns
-categorical_features_indices = combined_df.select_dtypes(include='object').columns.tolist()
+categorical_features_indices = combined_df.select_dtypes(
+    include='object').columns.tolist()
 
 # Fill missing categorical and numerical values
 for col in categorical_features_indices:

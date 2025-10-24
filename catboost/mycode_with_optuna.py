@@ -18,7 +18,8 @@ train_df = train_df.drop(columns=['Id', 'HotelValue'])
 test_df = test_df.drop(columns=['Id'])
 
 combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
-categorical_features_indices = combined_df.select_dtypes(include='object').columns.tolist()
+categorical_features_indices = combined_df.select_dtypes(
+    include='object').columns.tolist()
 
 for col in categorical_features_indices:
     combined_df[col] = combined_df[col].fillna("MISSING")
@@ -46,9 +47,11 @@ rsm_values = [0.7, 0.8, 1.0]
 best_rmse = float("inf")
 best_params = None
 
-for lr, depth, l2, subsample, rsm in product(learning_rates, depths, l2_leaf_regs, subsamples, rsm_values):
-    print(f"\nTesting: lr={lr}, depth={depth}, l2={l2}, subsample={subsample}, rsm={rsm}")
-    
+for lr, depth, l2, subsample, rsm in product(
+        learning_rates, depths, l2_leaf_regs, subsamples, rsm_values):
+    print(
+        f"\nTesting: lr={lr}, depth={depth}, l2={l2}, subsample={subsample}, rsm={rsm}")
+
     model = CatBoostRegressor(
         iterations=20000,
         learning_rate=lr,
@@ -68,14 +71,14 @@ for lr, depth, l2, subsample, rsm in product(learning_rates, depths, l2_leaf_reg
         early_stopping_rounds=500,
         use_best_model=True
     )
-    
+
     model.fit(X_train, y_train, eval_set=(X_val, y_val))
     preds = model.predict(X_val)
     rmse = mean_squared_error(y_val, preds)
     r2 = model.score(X_val, y_val)
-    
+
     print(f"Validation RMSE: {rmse:.4f}, R²: {r2:.4f}")
-    
+
     if rmse < best_rmse:
         best_rmse = rmse
         best_params = {

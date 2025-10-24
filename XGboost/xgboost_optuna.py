@@ -4,6 +4,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
 import optuna
+import os
+from PreProcessing.preprocessing import save_model_results
 
 # --- Load datasets ---
 train_df = pd.read_csv('train.csv')
@@ -22,7 +24,8 @@ combined_df = pd.concat([train_df, test_df], axis=0, sort=False)
 # Encode categorical columns
 categorical_cols = combined_df.select_dtypes(include='object').columns.tolist()
 for col in categorical_cols:
-    combined_df[col] = combined_df[col].fillna("MISSING").astype('category').cat.codes
+    combined_df[col] = combined_df[col].fillna(
+        "MISSING").astype('category').cat.codes
 
 # Fill missing numerical values
 numerical_cols = combined_df.select_dtypes(include=np.number).columns
@@ -34,9 +37,12 @@ X = combined_df.iloc[:len(train_df)]
 X_test = combined_df.iloc[len(train_df):]
 
 # --- Train/Validation Split ---
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(
+    X, y, test_size=0.2, random_state=42)
 
 # --- Objective function for Optuna ---
+
+
 def objective(trial):
     params = {
         "n_estimators": trial.suggest_int("n_estimators", 1000, 60000),
@@ -52,17 +58,19 @@ def objective(trial):
         "n_jobs": -1,
         "objective": "reg:squarederror"
     }
-    
+
     model = XGBRegressor(**params)
     model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
-    
+
     preds = model.predict(X_val)
     rmse = mean_squared_error(y_val, preds)  # Use RMSE directly
     return rmse
 
+
 # --- Run Optuna study ---
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=500, show_progress_bar=True)  # Adjust n_trials as needed
+# Adjust n_trials as needed
+study.optimize(objective, n_trials=500, show_progress_bar=True)
 
 # --- Best trial ---
 trial = study.best_trial
@@ -74,7 +82,11 @@ for key, value in trial.params.items():
 
 # --- Train final model with best hyperparameters ---
 best_params = trial.params
-best_model = XGBRegressor(**best_params, random_state=42, n_jobs=-1, objective="reg:squarederror")
+best_model = XGBRegressor(
+    **best_params,
+    random_state=42,
+    n_jobs=-1,
+    objective="reg:squarederror")
 best_model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
 
 val_preds = best_model.predict(X_val)
@@ -86,6 +98,10 @@ print("\n--- Final Model Results ---")
 print(f"Training R²: {train_r2:.4f}")
 print(f"Validation R²: {val_r2:.4f}")
 print(f"Validation RMSE: {val_rmse:.4f}")
+save_model_results(
+    os.path.basename(__file__),
+    'XGBRegressor (Optuna)',
+    val_rmse)
 
 # --- Predict test set and create submission ---
 test_preds = best_model.predict(X_test)
