@@ -120,10 +120,7 @@ def run_preprocessing(
     X_train_proc = preprocessor.transform(X_full_fe)
     X_test_proc = preprocessor.transform(X_test_fe)
 
-    print(
-        f"Data ready. Training data shape: {
-            X_train_proc.shape}, Test data shape: {
-            X_test_proc.shape}")
+    print( f"Data ready. Training data shape: { X_train_proc.shape}, Test data shape: { X_test_proc.shape}")
 
     return X_train_proc, X_test_proc, y_train_log, test_ids, preprocessor
 

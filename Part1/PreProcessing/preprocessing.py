@@ -105,10 +105,7 @@ def run_preprocessing(
     X_train_proc = preprocessor.transform(X_full_fe)
     X_test_proc = preprocessor.transform(X_test_fe)
 
-    print(
-        f"Data ready. Training data shape: {
-            X_train_proc.shape}, Test data shape: {
-            X_test_proc.shape}")
+    print( f"Data ready. Training data shape: { X_train_proc.shape}, Test data shape: { X_test_proc.shape}")
 
     return X_train_proc, X_test_proc, y_train_log, y_full_clean, test_ids, preprocessor
 
@@ -157,11 +154,7 @@ def drop_low_variance_cols(df, threshold=0.95):
     cols_to_drop = list(set(cols_to_drop))
 
     if cols_to_drop:
-        print(
-            f"Dropping {
-                len(cols_to_drop)} columns with >{
-                threshold *
-                100}% missing/zero values: {cols_to_drop}")
+        print( f"Dropping { len(cols_to_drop)} columns with >{ threshold * 100}% missing/zero values: {cols_to_drop}")
         df_copy = df_copy.drop(columns=cols_to_drop, errors='ignore')
 
     return df_copy

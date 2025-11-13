@@ -14,3 +14,4 @@ poly_model.py,PolynomialRegression,30305.016956749492
 poly_model.py,PolynomialRegression,30305.016956749492
 bayesian_model.py,BayesianRidge,20425.4901792677
 bayesian_model.py,BayesianRidge,20425.4901792677
+model_full_linear.py,LinearRegression,21327.46116655798
