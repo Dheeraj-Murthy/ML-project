@@ -539,39 +539,39 @@ def run_all(X_train, X_test, y_train, y_test):
     #     prefix=f"FAISS+SVM Ensemble best_thr={best_thr:.3f} f1={best_f1:.4f} (time {time.time()-t0:.2f}s)",
     # )
     #
-    # 5) Autoencoder -> FAISS
-    t0 = time.time()
-    try:
-        idx_ae, Z_train, Z_test = autoencoder_embedding_and_faiss(
-            Xtr,
-            Xte,
-            hidden_dim=128,
-            embed_dim=24,
-            epochs=15,
-            batch_size=512,
-            lr=1e-3,
-            device="cpu",
-        )
-        probs_ae = faiss_probabilities(
-            idx_ae, Z_test, ytr, class_weights=cw, K=20, temperature=0.02
-        )
-        best_f1 = 0
-        best_thr = 0.5
-        for thr in np.linspace(0.05, 0.95, 50):
-            p = (probs_ae >= thr).astype(int)
-            f = f1_score(yte, p)
-            if f > best_f1:
-                best_f1 = f
-                best_thr = thr
-        preds_ae = (probs_ae >= best_thr).astype(int)
-        print_metrics(
-            yte,
-            preds_ae,
-            prefix=f"AutoEncoder-FAISS best_thr={best_thr:.3f} f1={best_f1:.4f} (time {time.time()-t0:.2f}s)",
-        )
-    except Exception as e:
-        print("Autoencoder step failed:", e)
-
+    # # 5) Autoencoder -> FAISS
+    # t0 = time.time()
+    # try:
+    #     idx_ae, Z_train, Z_test = autoencoder_embedding_and_faiss(
+    #         Xtr,
+    #         Xte,
+    #         hidden_dim=128,
+    #         embed_dim=24,
+    #         epochs=15,
+    #         batch_size=512,
+    #         lr=1e-3,
+    #         device="cpu",
+    #     )
+    #     probs_ae = faiss_probabilities(
+    #         idx_ae, Z_test, ytr, class_weights=cw, K=20, temperature=0.02
+    #     )
+    #     best_f1 = 0
+    #     best_thr = 0.5
+    #     for thr in np.linspace(0.05, 0.95, 50):
+    #         p = (probs_ae >= thr).astype(int)
+    #         f = f1_score(yte, p)
+    #         if f > best_f1:
+    #             best_f1 = f
+    #             best_thr = thr
+    #     preds_ae = (probs_ae >= best_thr).astype(int)
+    #     print_metrics(
+    #         yte,
+    #         preds_ae,
+    #         prefix=f"AutoEncoder-FAISS best_thr={best_thr:.3f} f1={best_f1:.4f} (time {time.time()-t0:.2f}s)",
+    #     )
+    # except Exception as e:
+    #     print("Autoencoder step failed:", e)
+    #
     print("\nALL DONE.")
 
 
